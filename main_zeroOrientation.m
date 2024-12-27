@@ -2,13 +2,12 @@ clear all ; clc; close all
 addpath(strcat(pwd,'\eltoolbox\elfun18'));
 
 fminconOption =  optimoptions('fmincon','Display','iter','Algorithm','sqp','MaxIterations',10^6,'MaxFunctionEvaluations',10^6);
-param = [0.1,0.99,pi];
-alphavec = linspace (10,90,31); %%% NOTE 0 deg we need sign change for omega
-thTf = 10;
-RFlb = [0,0,-inf];
-RFub = [inf,1,inf];
+param = [0.1,0.99];
+alphavec = linspace (0,90,31); 
+RFlb = [0,0];
+RFub = [inf,1];
 for i = 1 : length(alphavec);
-    [ocpParam] = fmincon(@jacobiOCP,param,[],[],[],[],RFlb,RFub,@noncon,fminconOption,deg2rad(alphavec(i)),deg2rad(thTf));
+    [ocpParam] = fmincon(@jacobiOCP,param,[],[],[],[],RFlb,RFub,@noncon,fminconOption,deg2rad(alphavec(i)));
     param = ocpParam;
     [ocpsol] = solGen(ocpParam);% ocpsol = [tvec;x;y;xdot;ydot;xddot;yddot;theta;v;w]';
 
@@ -34,7 +33,7 @@ for i = 1 : length(alphavec);
 end
 
 
-function [energy] = jacobiOCP(param,alpha,thTf)
+function [energy] = jacobiOCP(param,alpha)
 z = param(1);
 m = param(2);
 A = sqrt(m);
@@ -42,19 +41,24 @@ tf = 10;
 energy = (A*z)^2*tf ;
 end
 
-function [c,ceq] = noncon(param,alpha,thTf)
+function [c,ceq] = noncon(param,alpha)
 z = param(1);
 m = param(2);
-eta = param(3);
 
 xf = cos(alpha);
 yf = sin(alpha);
 A = sqrt(m);
+if m >= 1
+    K = 100;
+else
+    K = melK(m);
+end
 
 %%%%%%
 T0 = 0 ;
 Tf = 10;
 
+eta = K - (z*Tf)/2;
 phi = -asin(A*mjsn(eta,m));
 
 u0 = z*T0+eta;
@@ -69,21 +73,26 @@ y=+cos(phi).*(ua-mpelE(mjam(ua,m),m))-A.*sin(phi).*mjcn(ua,m)+cy;
 th = asin(A.*mJacobiSN(ua,m))+phi;
 
 %%%%%%
-ceq = [x-xf;y-yf;th-thTf];
+ceq = [x-xf;y-yf];
 c = [];
 end
 
 function [ocpsol] = solGen(param);
 z = param(1);
 m = param(2);
-eta =param(3);
-
 A = sqrt(m);
 
 %%%%%%%%%%%%%%%%% Jacobi Solution
 
+if m >= 1
+    K = 100;
+else
+    K = melK(m);
+end
 T0 = 0;
 Tf = 10;
+
+eta = K - (z*Tf)/2;
 
 tvec = linspace(T0,Tf,1001);
 
